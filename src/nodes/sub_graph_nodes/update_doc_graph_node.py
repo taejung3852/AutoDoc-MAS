@@ -171,5 +171,10 @@ def update_compliance_editor_agent(state: TechDocState) -> dict:
         SystemMessage(content=sys_msg),
         HumanMessage(content=human_msg)
     ])
-    
-    return {"tech_reviewed_content": response.content, 'review_verdict': None}
+
+    raw_content = response.content
+    if isinstance(raw_content, list):
+        clean_text = "\n".join(
+            item.get('text', '') if isinstance(item, dict) else str(item) for item in raw_content
+        )    
+    return {"tech_reviewed_content": clean_text, 'review_verdict': None}

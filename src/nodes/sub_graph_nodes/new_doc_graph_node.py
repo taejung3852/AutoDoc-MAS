@@ -78,24 +78,25 @@ def technical_drafting_agent(state: TechDocState) -> dict:
     technical_source = state.get('technical_source')
     
     # 1편 전용 프롬프트: 첫인상과 배경 설명에 집중
-    sys_msg = f"""
+    sys_msg = """
     # Role
-    당신은 객관적이고 명확한 기술 문서를 작성하는 시니어 테크니컬 라이터입니다.
+    당신은 원시 기술 데이터를 객관적인 명세서로 변환하는 엄격한 테크니컬 라이터입니다.
 
     # Instructions
-    기획된 아웃라인과 원시 데이터를 바탕으로 사내 가이드라인에 부합하는 기술 문서 초안을 작성하십시오.
+    기획된 아웃라인과 사내 작성 가이드라인을 기반으로, 원시 기술 데이터(슬랙, 회의록 등)에 명시된 팩트만을 사용하여 기술 문서 초안을 작성하십시오.
 
     # Steps
-    1. 아웃라인의 구조를 100% 준수하여 마크다운 헤딩을 전개하십시오.
-    2. 원시 데이터에서 추출한 기술적 팩트만을 사용하여 각 단락에 살을 붙이십시오.
-    3. 사내 작성 가이드라인의 포맷 규칙을 적용하여 문장을 다듬으십시오.
+    1. 아웃라인의 목차를 전개하되, '원시 기술 데이터'와 한 줄씩 대조하며 작성하십시오.
+    2. 원시 데이터에 존재하는 팩트(API 경로, 파라미터, DB 테이블명, 타임아웃 등)만 해당 목차에 배치하십시오.
+    3. 사내 작성 가이드라인(어조, 포맷팅 등)을 적용하여 문장을 건조하게 다듬으십시오.
 
     # Expectations
-    다른 부서의 엔지니어가 읽어도 기술적 오해가 발생하지 않도록 명확하고(Clear), 간결하며(Concise), 완전한(Complete) 문서를 산출해야 합니다.
+    당신의 유일한 임무는 '데이터의 규격화'입니다. 제공된 대화나 메모에 없는 시스템의 목적, 데이터 흐름, 향후 고려사항 등을 절대 유추해서는 안 됩니다.
 
     # Narrowing
-    - 항상 3인칭의 객관적인 시점으로 서술하십시오. (1인칭 표현, 감성적 어휘 절대 금지)
-    - 절대 원시 데이터에 없는 기술적 사실을 창작하거나 유추하여 적지 마십시오.
+    - [Hallucination 절대 금지] 원시 데이터에 언급되지 않은 기술적 팩트나 로직(예: 트랜잭션, 모니터링 등)을 LLM의 배경 지식으로 임의 창작하여 덧붙이는 행위를 엄격히 금지합니다.
+    - 아웃라인(목차)이 존재하더라도, 원시 데이터에서 채울 내용이 없다면 그럴듯하게 문장을 지어내지 말고 해당 목차를 생략하거나 "내용 없음"으로 처리하십시오.
+    - 항상 3인칭의 객관적 시점과 명시된 종결 어미만을 사용하십시오.
     """
     
     human_msg = f"""
@@ -166,5 +167,13 @@ def compliance_editor_agent(state: TechDocState) -> dict:
         SystemMessage(content=sys_msg),
         HumanMessage(content=human_msg)
     ])
+    raw_content = response.content
+    if isinstance(raw_content, list):
+        # clean_text = raw_content[0]['text']
+        clean_text = "\n".join(
+            item.get("text", "") if isinstance(item, dict) else str(item) for item in raw_content
+        )
+    else:
+        clean_text =str(raw_content)
     
-    return {"tech_reviewed_content": response.content, 'review_verdict': None}
+    return {"tech_reviewed_content": clean_text, 'review_verdict': None}

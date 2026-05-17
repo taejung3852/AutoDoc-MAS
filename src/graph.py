@@ -151,5 +151,5 @@ app = workflow.compile(
 # https://mermaid.live 이 사이트에 출력된 결롸를 넣으면 시각화 그래프를 얻을 수 잇다.
 
 # print(app.get_graph().draw_mermaid())
-print(new_doc_app.get_graph().draw_mermaid())
+# print(new_doc_app.get_graph().draw_mermaid())
 # print(update_doc_app.get_graph().draw_mermaid())
