@@ -1,12 +1,11 @@
 import os
-from dotenv import load_dotenv
 from langchain_core.messages import SystemMessage, HumanMessage
 from src.utils import writer_llm, critic_llm
 from src.state import TechDocState
 
 # TODO: memory.py와 utils.py의 함수명도 기술 문서 도메인에 맞게 수성 해야함
 from src.memory import retrieve_past_context, save_doc_context
-from src.utils import load_learning_insights
+from src.utils import load_technical_source
 
 
 # ==============================================
@@ -24,43 +23,42 @@ def supervisor_agent(state: TechDocState) -> dict:
     
     if not raw_source:
         print("  -> ❌ 에러: technical source(기술 자료)가 없습니다. 파이프라인을 중단합니다.")
-        return {"next_step": 'end'} # 인사이트 없으면 종료
+        return {"next_step": 'end'}
 
-    # 경로일 경우 내용을 읽어서 다시 저장 (한 번만 실행되도록 조건부 처리)
-    # md 파일, txt 파일만 되도록 해주고 있다. (V1: ㅅ텍스트 및 마크다운 우선으로)
     if isinstance(raw_source, str) and (raw_source.endswith('.txt') or raw_source.endswith('.md')):
-         processed_source = load_learning_insights(raw_source)
-         # state 업데이트를 위해 return에 포함
+         processed_source = load_technical_source(raw_source)
     else:
          processed_source = raw_source
          
-    # 1. 업데이트 요청인데 이전 컨텍스트가 없는 경우 -> 이전 데이터를 불러오는 컨텍스트 주입 노드
+    # 1. 업데이트 요청인데 이전 컨텍스트가 없는 경우
     if is_update and not past_context:
         next_step = "context_injection"
 
-    # 2. 에디터가 작성한 기술 초안이 없는 경우 혹은 리뷰 완료본이 없는 경우 -> 작성 그래프로
-    elif not reviewed_content:
-        next_step = "update_doc_graph" if is_update else "new_doc_graph" # 각 서브 그래프로 옮겨가게 된다.
+    # 2. QA에서 반려(REVISE)된 상태인 경우 먼저 체크!
+    elif verdict == "REVISE":
+        if rev_count < max_rev:
+            print(f"  -> ⚠️ QA 에이전트 반려됨. 재작성 요청 (현재 수정 횟수: {rev_count}/{max_rev})")
+            next_step = "update_doc_graph" if is_update else "new_doc_graph"
+        else:
+            print(f"  -> 🚨 최대 수정 횟수({max_rev}회) 도달. 강제로 휴먼 리뷰로 넘깁니다.")
+            next_step = 'human_approval'
 
-    # 3. 작성은 되어있지만 QA를 받지 않은 경우
+    # 3. 에디터가 작성한 기술 초안이 없는 경우 (최초 작성 시)
+    elif not reviewed_content:
+        next_step = "update_doc_graph" if is_update else "new_doc_graph"
+
+    # 4. 작성은 되어있지만 QA 판정(Verdict)을 아직 안 받은 경우
     elif not verdict:
         next_step = "qa_critic"
 
-    # 4. QA 검증 결과에 따른 라우팅
-    else:
-        if verdict == "PASS":
-            if not state.get('human_review_complete'):
-                next_step = 'human_approval'
-            else:
-                next_step = "final_publish"
-                
-        elif verdict == "REVISE" and rev_count < max_rev:
-            print(f"  -> QA 에이전트에서 반료됨. 재작성 요청 (현재 수정 횟수: {rev_count}/{max_rev})")
-            next_step = "update_doc_graph" if is_update else "new_doc_graph"
-        else:
-            # 반려되었으나 최대 수정횟수에 도달한 경우 강제로 휴먼 리뷰
+    # 5. QA를 통과(PASS)한 경우
+    elif verdict == "PASS":
+        if not state.get('human_review_complete'):
             next_step = 'human_approval'
-            
+
+        # HITL도 끝났다면 마무리단게로
+        else:
+            next_step = "final_publish"
 
     print(f"  -> 다음 단계: {next_step}")
     return {"next_step": next_step, "technical_source": processed_source}
@@ -73,7 +71,7 @@ def context_injection_agent(state: TechDocState) -> dict:
     system_name = state.get('system_name') # 문서화할 이름
 
     # TODO: memory.py 수정후 retrieve_past_context인자 변경 필요하다. 현재 프젝에 맞지 않는 이름 (current_topic -> current_system_name)
-    past_context = retrieve_past_context(current_topic = system_name, k = 2)
+    past_context = retrieve_past_context(system_name= system_name, k = 2)
     print(f"  -> 검색된 맥락 데이터 로드 완료.\n")
     
     return {'previous_doc_context': past_context}
@@ -86,29 +84,27 @@ def qa_critic_agent(state: TechDocState) -> dict:
     reviewed_content = state.get('tech_reviewed_content')
     style_guide = state.get('doc_style_guide')
     current_count = state.get('revision_count', 0)
+    max_revisions = state.get('max_revisions', 2)
 
     sys_msg = f"""
     # Role
-    당신은 사내 기술 표준 및 규격 준수 여부를 엄격하게 판단하는 수석 QA(Quality Assurance) 엔지니어입니다.
+    당신은 사실 관계(Fact-Checking)의 무결성을 최우선으로 검증하는 수석 QA 엔지니어입니다.
 
     # Instructions
-    작성된 기술 문서 초안이 사내 가이드라인을 완벽히 준수하고 있는지 검증하십시오.
+    초안 문서가 '원본 기술 데이터'를 100% 왜곡 없이 담아냈는지 검증하고, '사내 작성 가이드라인' 준수율을 평가하여 최종 합격(PASS) 또는 반려(REVISE)를 결정하십시오.
 
     # Steps
-    1. 입력된 문서 초안의 구조와 가이드라인의 필수 항목을 대조하십시오.
-    2. 기술적 용어의 통일성 및 비정형 데이터와의 정합성을 확인하십시오.
-    3. 규격 위반 사항이나 논리적 비약이 발견되면 <Violation> 태그 내에 구체적으로 리스트업 하십시오.
+    1. [팩트 검증 - 무관용 원칙]: 원본 기술 데이터와 초안을 한 줄씩 대조하십시오. 원본에 없는 시스템 목적, 기대 효과, 향후 고려사항, 예외 처리 로직 등을 AI가 임의로 창작(Hallucination)한 문장이 단 한 개라도 있다면 즉시 반려(REVISE) 사유로 기록하십시오.
+    2. [규격 검증 - 실용적 허용]: 사내 작성 가이드라인(3인칭 어조, 불릿 포인트, 언어 태그 등)이 80% 이상 지켜졌는지 확인하십시오.
+    3. [최종 판정]: 팩트 왜곡 및 창작이 발견되면 무조건 반려(REVISE)하십시오. 단, 팩트 창작이 없고 내용이 정확하다면, 1~2개의 사소한 포맷팅 실수나 마크다운 누락은 너그럽게 통과(PASS)시키십시오.
 
     # Expectations
-    최종 목표는 주니어 개발자도 오해 없이 읽고 즉각적으로 시스템을 이해할 수 있는 무결점의 기술 문서를 확보하는 것입니다.
+    당신의 핵심 목표는 개발자가 하지도 않은 말을 그럴듯하게 적어놓은 '소설(Hallucination)'을 완벽하게 차단하는 것입니다. 사소한 띄어쓰기 검사가 아님을 명심하십시오.
 
     # Narrowing
-    - 항상 객관적인 지표와 가이드라인에 근거하여 평가하십시오.
-    - 절대 문서 본문을 직접 수정하여 출력하지 마십시오. 오직 문제점(피드백)만 지적하십시오.
-    - 감성적인 표현이나 모호한 부사가 포함되어 있다면 반드시 수정을 요구하십시오.
-    - 평가 결과의 가장 마지막 줄에는 반드시 아래 판정 결과 중 하나를 단독으로 기재하십시오.
-        - 통과 시: VERDICT: PASS
-        - 수정 필요 시: VERDICT: REVISE
+    - 절대 사소한 포맷팅 실수나 띄어쓰기를 이유로 문서를 반려하지 마십시오. 반려는 오직 '팩트 창작'이나 '가이드라인 전면 위반'일 때만 수행하십시오.
+    - 피드백은 다음 에이전트가 직관적으로 고칠 수 있도록 3문장 이내의 명확한 리스트 형태로만 작성하십시오.
+    - 응답의 맨 마지막 줄에는 반드시 `VERDICT: PASS` 또는 `VERDICT: REVISE` 중 하나를 정확히 출력하십시오.
     """
 
     human_msg = f"""
@@ -123,8 +119,15 @@ def qa_critic_agent(state: TechDocState) -> dict:
         SystemMessage(content=sys_msg),
         HumanMessage(content=human_msg)
     ])
-    
-    feedback = response.content
+
+    raw_content = response.content
+    if isinstance(raw_content, list):
+        feedback = "\n".join(
+            item.get("text", "") if isinstance(item, dict) else str(item) 
+            for item in raw_content
+        )
+    else:
+        feedback = str(raw_content)
     print(f"  -> QA 리포트 생성 완료 (판정 결과 대기 중)\n")
 
     if "VERDICT: PASS" in feedback.upper():
@@ -137,16 +140,25 @@ def qa_critic_agent(state: TechDocState) -> dict:
         }
     else:
         print(f"  -> ❌ 규격 미달 (REVISE)")
-        
-        return{
-            "revision_count": current_count + 1, 
-            "review_verdict": "REVISE",
-            "doc_draft": None,
-            "tech_reviewed_content": None, # 기존 작성본 파기
-            "qa_feedback": feedback,
-            "messages": [response]
-        }
-
+        if current_count + 1 >= max_revisions:
+            print("  -> ⚠️ 최대 수정 횟수 도달. 현재 버전을 유지하고 사용자 검토로 넘깁니다.")
+            return {
+                "revision_count": current_count + 1, 
+                "review_verdict": "REVISE",
+                "qa_feedback": feedback,
+                "messages": [response]
+                # tech_reviewed_content 등은 덮어쓰지 않고 기존 상태 유지
+            }
+        else:
+            # 아직 재작성 기회가 남았다면 기존안을 파기하고 다시 쓰도록 유도
+            return {
+                "revision_count": current_count + 1, 
+                "review_verdict": "REVISE",
+                "doc_draft": None,
+                "tech_reviewed_content": None, 
+                "qa_feedback": feedback,
+                "messages": [response]
+            }
 # ==============================================
 # HITL 에이전트
 def human_approval_agent(state: TechDocState) -> dict:
@@ -199,7 +211,14 @@ def final_publish_agent(state: TechDocState) -> dict:
         HumanMessage(content=human_msg)
     ])
     
-    summary_text = summary_response.content
+    raw_summary = summary_response.content
+    if isinstance(raw_summary, list):
+        summary_text = "\n".join(
+            item.get("text", "") if isinstance(item, dict) else str(item) 
+            for item in raw_summary
+        )
+    else:
+        summary_text = str(raw_summary)
     print("  -> 📝 아키텍처 메타데이터 추출 완료. DB 갱신을 진행합니다.")
     
     save_doc_context(system_name, summary_text)

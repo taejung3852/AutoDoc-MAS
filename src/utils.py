@@ -9,12 +9,12 @@ load_dotenv()
 
 # ==============================================
 # LLM 정의
-writer_llm = ChatGoogleGenerativeAI(model = 'gemini-3-flash-preview', temperature=0.4)
-critic_llm = ChatGoogleGenerativeAI(model = 'gemini-3-flash-preview', temperature=0)
+writer_llm = ChatGoogleGenerativeAI(model = 'gemini-3.1-flash-lite', temperature=0.4)
+critic_llm = ChatGoogleGenerativeAI(model = 'gemini-3.1-flash-lite', temperature=0)
 
 # ==============================================
 # Embedding 모델 정의
-embeddings = GoogleGenerativeAIEmbeddings(model ="gemini-embedding-2")
+embeddings = GoogleGenerativeAIEmbeddings(model ="gemini-embedding-001")
 
 def load_technical_source(path_or_text: str) -> str:
     """원시 기술 데이터가 파일 경로일 경우 읽어오고, 아니면 텍스트 그대로 반환"""
@@ -114,10 +114,19 @@ def synthesize_tech_feedback(edited_text: str, tech_feedback: str, compliance_fe
         SystemMessage(content=sys_msg),
         HumanMessage(content=human_msg)
     ])
+
+    raw_content = response.content
+    if isinstance(raw_content, list):
+        clean_text = "\n".join(
+            item.get("text", "") if isinstance(item, dict) else str(item) 
+            for item in raw_content
+        )
+    else:
+        clean_text = str(raw_content)
     
     try:
-        return ast.literal_eval(response.content.strip())
+        return ast.literal_eval(clean_text.strip())
     except (ValueError, SyntaxError) as e:
         print(f'❌ 파싱 에러 발생: {e}. 기본 딕셔너리를 반환합니다.')
-        return {"technical_rule": "", "compliance_rule": response.content}
+        return {"technical_rule": "", "compliance_rule": clean_text}
 

@@ -84,7 +84,15 @@ def retrieve_past_context(system_name: str, k: int = 1) -> str:
         HumanMessage(content=human_msg)
         ])
     
-    raw_query = response.content.strip()
+    raw_content = response.content
+    if isinstance(raw_content, list):
+        raw_query = "".join(
+            item.get("text", "") if isinstance(item, dict) else str(item) 
+            for item in raw_content
+        ).strip()
+    else:
+        raw_query = str(raw_content).strip()
+        
     parsed_keywords = " ".join([word.strip() for word in raw_query.split(',') if word.strip()])
 
     query = parsed_keywords if parsed_keywords else system_name # 파싱 실패 시 기본 시스템명으로 폴백(Fallback)
@@ -136,7 +144,7 @@ def delete_system(system_name: str) -> bool:
     db = get_vector_db()
     try:
         collection = db._collection
-        # metadata의 'system_name' 필드가 일치하는 데이터 모두 삭제
+        # metadata의 'system_name' 필드가 일치하는 데이터 모두 삭제 streamlit에서 해당 시스템 이름을 지운다고 버튼을 누르면 실행
         collection.delete(where={"system_name": system_name})
         print(f"🗑️ [System] '{system_name}' 관련 데이터가 ChromaDB에서 삭제되었습니다.")
         return True
