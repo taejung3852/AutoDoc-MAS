@@ -1,40 +1,54 @@
-# 멀티 에이전트 기반 개인화 블로그 작성 시스템 (MAS)
+# AutoDoc-MAS
 
 ## 프로젝트 개요
-사용자의 학습 인사이트와 멀티모달(캡처 이미지) 데이터를 바탕으로, 기계적인 느낌 없이 '직접 공부하며 쓴 느낌'의 개인화된 블로그 포스팅을 작성/검토하는 LangGraph 기반 AI 에이전트 시스템 구축.
+비정형 기술 데이터(코드 스니펫, 회의록, 아키텍처 다이어그램 등)를 규격화된 기업용 기술 문서로 자동 변환하고 관리하는 LangGraph 기반 멀티 에이전트 시스템.
+단일 LLM 호출의 한계인 맥락 단절(Context Loss)과 기술적 환각(Hallucination)을 다중 에이전트 간 Reflection 루프와 VectorDB 기반 Long-term Memory로 제어.
+
+---
 
 ## 마일스톤
 
 - [x] **Phase 0: 설계 및 아키텍처 확정**
-  - Supervisor 아키텍처 기반 설계
-  - 처음 포스팅하는 내용인지 이전에 작성하고 있던 내용인지 파악 후 적절한 Sub 그래프로 경로 설정
-  - Context Injection 노드를 통해서 VectorDB에 저장된 이전 포스팅의 내용을 들고와서 맥락을 유지
-  - Critic 노드를 통해서 글이 잘 작성되었는지 판단
+  - 계층형 Supervisor 아키텍처 설계
+  - 신규 문서 / 업데이트 문서 파이프라인을 독립된 서브 그래프로 분리하는 구조 확정
+  - VectorDB 기반 Context Injection으로 이전 문서 맥락 유지 전략 설계
+  - QA Critic 노드의 PASS / REVISE 판정 루프 및 HITL 개입 지점 설계
 
 - [x] **Phase 1: 상태(State) 정의 및 더미 노드 구축**
-  - `BlogState` 스키마 작성 (TypedDict 기반으로 업데이트 완료)
-  - 에이전트 연동 전, 로직 테스트용 `dummy_nodes` 생성
-    - 로직을 자세히 구현하지 않고 연결이 잘 되었는지만 확인하는 용도
+  - `TechDocState` 스키마 작성 (TypedDict 기반)
+  - 에이전트 연동 전 라우팅 검증용 더미 노드 생성
 
-- [x] **Phase 2: LangGraph기반 workflow 뼈대 조립 및 라우팅 테스트**
-  - `graph.py`에서 노드 간 Edge 연결
-  - 루프 및 Edge, Conditional Edge 동작 검증 완료
+- [x] **Phase 2: LangGraph 기반 워크플로우 뼈대 조립 및 라우팅 테스트**
+  - `graph.py`에서 메인/서브 그래프 노드 간 Edge 연결
+  - 순환 루프, Conditional Edge 동작 검증 완료
 
-- [x] **Phase 3: LLM 기본 연동 및 시스템 프롬프트 가이드라인 확립**
-  - `llm_nodes.py` 생성 및 OpenAI 연동
-  - CARE 프레임워크(역할-목표-규칙-출력형식) 기반 프롬프트 템플릿 문서화(`docs/04_prompt_guide.md`)
-  
-- [x] **Phase 4: 사용자 맞춤형 서브 그래프(Sub-graph) 구축 및 멀티모달 연동**
-  - 학습 인사이트 기반 아웃라인 설계 (`content_structure_agent`)
-  - 캡처 이미지(Base64) 분석 및 최적 배치 가이드 (`image_analysis_agent`)
-  - 기계적 냄새를 지운 휴먼라이징 초안 작성 (`humanized_draft_agent`)
-  - 메인 그래프(`supervisor`)와 서브 그래프(계층형 라우팅) 통합
+- [x] **Phase 3: LLM 연동 및 RISEN 기반 프롬프트 체계 확립**
+  - Google Gemini 연동 (`writer_llm`, `critic_llm` 역할 분리)
+  - RISEN 프레임워크(Role-Instructions-Steps-Expectations-Narrowing) 기반 프롬프트 템플릿 문서화 (`docs/04_prompt_guide.md`)
 
-- [x] **Phase 5: VectorDB 연동 (Context Injection) 및 최종 테스트**
-  - 이전 포스팅들의 '핵심 메타데이터 3요소' 추출 및 저장 로직 구현
-  - RAG 기반 맥락 주입 테스트
+- [x] **Phase 4: 서브 그래프 구축 및 멀티모달 연동**
+  - 신규 문서 파이프라인 (`new_doc_graph`): Planner → Executor → Compliance Editor
+  - 업데이트 문서 파이프라인 (`update_doc_graph`): Context Loader → Planner → Executor → QA Critic
+  - 다이어그램 이미지(Base64) 분석 및 최적 배치 노드 구현 (`diagram_analysis`, `image_placement`)
+  - 메인 그래프(`supervisor`)와 서브 그래프 계층형 라우팅 통합
 
-- [ ] **Phase 6: 사용자 친화적 GUI 구축 (Streamlit) 및 프롬프트 고도화**
-  - Streamlit 기반 웹 인터페이스(`app.py`) 구축 (사이드바 설정, 메인 입력창, 파일 업로드 등)
-  - LangGraph 워크플로우와 GUI 연동 및 실시간 처리 상태 시각화
-  - GUI 테스트 환경을 활용한 에이전트 프롬프트(Context Engineering) 마이크로 튜닝 및 글 퀄리티 극대화
+- [x] **Phase 5: VectorDB 연동 및 Long-term Memory 구현**
+  - ChromaDB 기반 시스템 네임스페이스별 문서 컨텍스트 저장 로직 구현
+  - 발행 시 핵심 아키텍처 메타데이터만 압축 추출하여 저장하는 전략 적용
+  - RAG 기반 맥락 주입(Context Injection) 및 연속성 검증 완료
+
+- [x] **Phase 6: HITL 및 Reflection 루프 완성**
+  - QA Critic 에이전트의 PASS / REVISE 판정 기반 자가 수정 루프 구현
+  - `max_revisions` 초과 시 강제 HITL 전환 로직 추가
+  - LangGraph Checkpointer 기반 Interrupt 및 재개 파이프라인 연동
+  - Streamlit 마크다운 에디터 + 실시간 렌더링 뷰어 HITL UI 구현
+
+- [ ] **Phase 7: 정량 검증 및 성과 측정**
+  - SQLite 기반 파이프라인 실행 로그 수집 (revision_count, verdict, 처리 시간)
+  - 단일 LLM 대비 가이드라인 준수율 비교 테스트
+  - README 정량적 성과 지표 섹션 업데이트
+
+- [ ] **Phase 8: 데이터 수집 서브 그래프 (Data Ingest Graph) 통합**
+  - PDF 입력 지원: Upstage Document Parser 연동 (다단 레이아웃, 테이블 구조 보존)
+  - `input_router` 노드로 파일 타입별 파싱 분기 (`.pdf` / `.txt` / `.md`)
+  - 파싱 결과 정제 및 검증 게이트 구현
