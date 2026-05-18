@@ -1,0 +1,15 @@
+services:
+  autodoc-mas:
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app              # 코드 변경 실시간 반영
+      - chroma_data:/app/chroma_db   # ChromaDB 데이터 영속성
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+
+volumes:
+  chroma_data:
