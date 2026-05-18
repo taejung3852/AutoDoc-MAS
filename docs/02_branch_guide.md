@@ -23,6 +23,7 @@
 | **`docs/`** | 문서 작성 및 수정 | `docs/update-readme` |
 | **`refactor/`** | 기능 변경 없는 코드 구조 개선 | `refactor/modularize-nodes` |
 | **`test/`** | 테스트 코드 추가 및 수정 | `test/dummy-node-verification` |
+| **`chore/`** | 빌드 업무, 패키지 설정, 에셋 파일 이동 등 | `chore/move-assets-folder` |
 
 ---
 
