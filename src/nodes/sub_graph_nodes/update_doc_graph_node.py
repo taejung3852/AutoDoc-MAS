@@ -1,27 +1,53 @@
-from src.state import TechDocState
 from langchain_core.messages import SystemMessage, HumanMessage
+from src.state import TechDocState
 from src.utils import writer_llm, critic_llm
+from src.memory import retrieve_past_context
 
 # ==============================================
 # Supervisor 에이전트
 def update_doc_supervisor_agent(state: TechDocState) -> dict:
     print("\n[Node: Continuation Supervisor] 연재글 작성 부서 내부 작업 지시 중...")
 
-    if not state.get("technical_source"):
-        print("  -> ⚠️ 경고: 기술 자료(Source)가 없습니다. 메인으로 복귀합니다.")
+    technical_source = state.get("technical_source")
+    previous_doc_context = state.get("previous_doc_context")
+    doc_outline = state.get("doc_outline")
+    doc_draft = state.get("doc_draft")
+    tech_reviewed_content = state.get("tech_reviewed_content")
+    captured_diagrams = state.get("captured_diagrams")
+    diagram_analysis_result = state.get("diagram_analysis_result")
+
+    if not technical_source:
+        print("  -> 경고: 기술 자료(Source)가 없습니다. 메인으로 복귀합니다.")
         return {"sub_next_step": "end"}
 
-    if not state.get("doc_outline"):
+    if not previous_doc_context:
+        next_step = "context_injection"
+    elif not doc_outline:
         next_step = "structure_planning"
-    elif not state.get("doc_draft"):
+    elif not doc_draft:
         next_step = "technical_drafting"
-    elif not state.get("tech_reviewed_content"):
+    elif not tech_reviewed_content:
         next_step = "compliance_editor"
+    elif captured_diagrams and not diagram_analysis_result:
+        next_step = "diagram_analysis"
     else:
         print("  -> 업데이트 서브 그래프 작업 완료! 메인 Supervisor로 복귀합니다.")
         return {'sub_next_step':'end'}
         
     return {"sub_next_step": next_step}
+
+# ==============================================
+# 이전 맥락 주입 에이전트
+def context_injection_agent(state: TechDocState) -> dict:
+    print("[Node: Context Injection] VectorDB에서 시스템의 아키텍처 맥락을 가져옵니다.")
+    system_name = state.get('system_name') # 문서화할 이름
+
+    # TODO: memory.py 수정후 retrieve_past_context인자 변경 필요하다. 현재 프젝에 맞지 않는 이름 (current_topic -> current_system_name)
+    past_context = retrieve_past_context(system_name= system_name, k = 2)
+    print(f"  -> 검색된 맥락 데이터 로드 완료.\n")
+    
+    return {'previous_doc_context': past_context}
+
 
 # ==============================================
 # 아웃라인 작성 에이전트
@@ -177,4 +203,6 @@ def update_compliance_editor_agent(state: TechDocState) -> dict:
         clean_text = "\n".join(
             item.get('text', '') if isinstance(item, dict) else str(item) for item in raw_content
         )    
+    else:
+        clean_text = str(raw_content) 
     return {"tech_reviewed_content": clean_text, 'review_verdict': None}
