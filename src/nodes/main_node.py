@@ -17,28 +17,32 @@ def supervisor_agent(state: TechDocState) -> dict:
     verdict = state.get("review_verdict")
     rev_count = state.get("revision_count", 0)
     max_rev = state.get("max_revisions", 2)
-    raw_source = state.get("technical_source")
+    technical_source = state.get('technical_source')
+    raw_file_path = state.get("raw_file_path")
+    parser_verdict = state.get('parser_verdict')
     
-    if not raw_source:
-        print("  -> ❌ 에러: technical source(기술 자료)가 없습니다. 파이프라인을 중단합니다.")
-        return {"next_step": 'end'}
-
-    if isinstance(raw_source, str) and (raw_source.endswith('.txt') or raw_source.endswith('.md')):
-         processed_source = load_technical_source(raw_source)
-    else:
-         processed_source = raw_source
+    # 0. 전처리 필요 여부 판단 (최우선)
+    #    - technical_source가 없고 raw_file_path가 있으면 → data_ingest_graph
+    #    - parser_verdict가 FAIL이면 → 파이프라인 중단
+    if parser_verdict == "FAIL":
+        print("  -> 파일 파싱 실패. 파이프라인을 중단합니다.")
+        return {'next_step':None}
+    
+    if not technical_source and raw_file_path:
+        print("  -> 원본 파일 감지. 데이터 전처리 서브 그래프로 라우팅합니다.")
+        return {'next_step': 'data_ingest_graph'}
          
-    # 1. 업데이트 요청인데 이전 컨텍스트가 없는 경우
-    if is_update and not past_context:
-        next_step = "context_injection"
+    if not technical_source:
+        print("  -> 에러: technical_source가 없습니다. 파이프라인을 중단합니다.")
+        return {"next_step": None}
 
     # 2. QA에서 반려(REVISE)된 상태인 경우 먼저 체크!
     elif verdict == "REVISE":
         if rev_count < max_rev:
-            print(f"  -> ⚠️ QA 에이전트 반려됨. 재작성 요청 (현재 수정 횟수: {rev_count}/{max_rev})")
+            print(f"  -> QA 에이전트 반려됨. 재작성 요청 (현재 수정 횟수: {rev_count}/{max_rev})")
             next_step = "update_doc_graph" if is_update else "new_doc_graph"
         else:
-            print(f"  -> 🚨 최대 수정 횟수({max_rev}회) 도달. 강제로 휴먼 리뷰로 넘깁니다.")
+            print(f"  -> 최대 수정 횟수({max_rev}회) 도달. 강제로 휴먼 리뷰로 넘깁니다.")
             next_step = 'human_approval'
 
     # 3. 에디터가 작성한 기술 초안이 없는 경우 (최초 작성 시)
@@ -59,7 +63,7 @@ def supervisor_agent(state: TechDocState) -> dict:
             next_step = "final_publish"
 
     print(f"  -> 다음 단계: {next_step}")
-    return {"next_step": next_step, "technical_source": processed_source}
+    return {"next_step": next_step}
 
 
 

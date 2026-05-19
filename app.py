@@ -140,7 +140,7 @@ with col_input2:
 
 
 if st.button("🚀 AutoDoc-MAS 파이프라인 가동", use_container_width=True, type="primary"):
-
+    parse_failed = False
     # 검증: 텍스트도 없고 PDF도 없으면 에러
     if not system_name or (not technical_source and not uploaded_pdf):
         st.error("시스템 식별자와 기술 데이터(텍스트 또는 PDF)는 필수입니다.")

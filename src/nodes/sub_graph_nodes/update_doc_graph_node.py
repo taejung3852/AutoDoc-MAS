@@ -8,15 +8,23 @@ from src.memory import retrieve_past_context
 def update_doc_supervisor_agent(state: TechDocState) -> dict:
     print("\n[Node: Continuation Supervisor] 연재글 작성 부서 내부 작업 지시 중...")
 
-    if not state.get("technical_source"):
-        print("  -> ⚠️ 경고: 기술 자료(Source)가 없습니다. 메인으로 복귀합니다.")
+    technical_source = state.get("technical_source")
+    previous_doc_context = state.get("previous_doc_context")
+    doc_outline = state.get("doc_outline")
+    doc_draft = state.get("doc_draft")
+    tech_reviewed_content = state.get("tech_reviewed_content")
+
+    if not technical_source:
+        print("  -> 경고: 기술 자료(Source)가 없습니다. 메인으로 복귀합니다.")
         return {"sub_next_step": "end"}
 
-    if not state.get("doc_outline"):
+    if not previous_doc_context:
+        next_step = "context_injection"
+    elif not doc_outline:
         next_step = "structure_planning"
-    elif not state.get("doc_draft"):
+    elif not doc_draft:
         next_step = "technical_drafting"
-    elif not state.get("tech_reviewed_content"):
+    elif not tech_reviewed_content:
         next_step = "compliance_editor"
     else:
         print("  -> 업데이트 서브 그래프 작업 완료! 메인 Supervisor로 복귀합니다.")
@@ -191,4 +199,6 @@ def update_compliance_editor_agent(state: TechDocState) -> dict:
         clean_text = "\n".join(
             item.get('text', '') if isinstance(item, dict) else str(item) for item in raw_content
         )    
+    else:
+        clean_text = str(raw_content) 
     return {"tech_reviewed_content": clean_text, 'review_verdict': None}
