@@ -39,11 +39,19 @@ def show_settings():
         st.session_state['doc_style_guide'] = doc_style_guide_input
         st.session_state['max_revisions'] = max_revisions
         st.rerun()
-
+        
+@st.dialog("⚠️ 입력 오류")
+def show_input_error(message: str):
+    st.warning(message)
+    if st.button("확인", use_container_width=True):
+        st.rerun()
+        
 
 # ==========================================
 # 세션 초기화
 # ==========================================
+if 'input_key' not in st.session_state:
+    st.session_state['input_key'] = 0  # ← 추가
 if 'doc_style_guide' not in st.session_state:
     st.session_state['doc_style_guide'] = """1. 3인칭 객관적 시점 및 '~합니다' 형태의 기술적 어조 사용.
 2. 마크다운 계층 구조(#, ##, ###) 엄수.
@@ -61,6 +69,7 @@ with st.sidebar:
 
     if st.button("➕ 새로운 시스템 시작", use_container_width=True, type="primary"):
         st.session_state['selected_system'] = "NEW"
+        st.session_state['input_key'] += 1
         if 'thread_id' in st.session_state:
             del st.session_state['thread_id']
         st.rerun()
@@ -75,6 +84,7 @@ with st.sidebar:
             if st.button(f"📁 {sys}", key=f"btn_{sys}", use_container_width=True):
                 st.session_state['selected_system'] = sys
                 st.session_state['is_update_request'] = True
+                st.session_state['input_key'] += 1
                 if 'thread_id' in st.session_state:
                     del st.session_state['thread_id']
                 st.rerun()
@@ -123,25 +133,34 @@ col_input1, col_input2 = st.columns(2)
 with col_input1:
     technical_source = st.text_area(
         "파편화된 원시 기술 데이터 입력 (회의록, 로그, 슬랙 등)",
-        height=250
+        height=250,
+        key=f"technical_source_{st.session_state['input_key']}"
     )
     uploaded_pdf = st.file_uploader(
         "또는 PDF 파일 업로드 (선택)",
         type=['pdf'],
-        accept_multiple_files=False
+        accept_multiple_files=False,
+        key=f"uploaded_pdf_{st.session_state['input_key']}"
     )
 
 with col_input2:
     uploaded_diagrams = st.file_uploader(
         "다이어그램 / 아키텍처 이미지 (선택)",
         type=['png', 'jpg'],
-        accept_multiple_files=True
+        accept_multiple_files=True,
+        key=f"uploaded_diagrams_{st.session_state['input_key']}"
     )
 
 
 if st.button("🚀 AutoDoc-MAS 파이프라인 가동", use_container_width=True, type="primary"):
     parse_failed = False
     # 검증: 텍스트도 없고 PDF도 없으면 에러
+
+    if technical_source and uploaded_pdf:
+        show_input_error("텍스트 입력과 PDF 업로드는 동시에 사용할 수 없습니다. 하나만 선택해주세요.")
+        st.stop()
+
+    
     if not system_name or (not technical_source and not uploaded_pdf):
         st.error("시스템 식별자와 기술 데이터(텍스트 또는 PDF)는 필수입니다.")
         st.stop()

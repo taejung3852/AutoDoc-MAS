@@ -13,6 +13,8 @@ def update_doc_supervisor_agent(state: TechDocState) -> dict:
     doc_outline = state.get("doc_outline")
     doc_draft = state.get("doc_draft")
     tech_reviewed_content = state.get("tech_reviewed_content")
+    captured_diagrams = state.get("captured_diagrams")
+    diagram_analysis_result = state.get("diagram_analysis_result")
 
     if not technical_source:
         print("  -> 경고: 기술 자료(Source)가 없습니다. 메인으로 복귀합니다.")
@@ -26,6 +28,8 @@ def update_doc_supervisor_agent(state: TechDocState) -> dict:
         next_step = "technical_drafting"
     elif not tech_reviewed_content:
         next_step = "compliance_editor"
+    elif captured_diagrams and not diagram_analysis_result:
+        next_step = "diagram_analysis"
     else:
         print("  -> 업데이트 서브 그래프 작업 완료! 메인 Supervisor로 복귀합니다.")
         return {'sub_next_step':'end'}

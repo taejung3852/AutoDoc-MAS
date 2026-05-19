@@ -38,4 +38,4 @@ workflow.add_edge("image_placement", "new_doc_supervisor")
 workflow.add_edge("technical_drafting", "new_doc_supervisor")
 workflow.add_edge("compliance_editor", "new_doc_supervisor")
 
-new_doc_app = workflow.compile()
+new_doc_graph = workflow.compile()

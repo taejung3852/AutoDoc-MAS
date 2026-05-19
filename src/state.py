@@ -44,6 +44,7 @@ class TechDocState(TypedDict):
     doc_draft: Optional[str]                # 기술 문서 초안
     tech_reviewed_content: Optional[str]    # 기술 교정 완성본
     final_doc: Optional[str]                # 최종 승인된 기술 문서
+    diagram_analysis_result: Optional[str]   # 다이어그램 분석 결과
 
     # 검증 및 피드백
     review_verdict: Optional[Literal['PASS', 'REVISE', 'REJECT']]
@@ -51,8 +52,9 @@ class TechDocState(TypedDict):
     revision_count: int                     
     max_revisions: int                      # 최대 거절 횟수
 
-    ## ingest 검증 결과
+    ## ingest 그래프
     parser_verdict: Optional[Literal['PASS', 'FAIL']]              # 데이터 검증 실패 메시지
+    pdf_extracted_figures: Optional[list[str]]
 
     # HITL
     human_review_complete: Optional[bool]    # 사용자 검토 완료 여부
