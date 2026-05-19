@@ -26,6 +26,7 @@ class TechDocState(TypedDict):
         ]]
     sub_next_step: Optional[Literal[        # 하위 그래프들의 경로 선택 목록
         'structure_planning',               # 목차 기획
+        'context_injection'
         'diagram_analysis',                 # 아키텍처 다이어그램 분석
         'technical_drafting',               # 기술 초안 작성
         'compliance_editor',                # 사내 가이드라인 준수 여부 교정

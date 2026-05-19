@@ -3,7 +3,6 @@ from langgraph.checkpoint.memory import MemorySaver
 from src.state import TechDocState
 from src.nodes.main_node import (
     supervisor_agent,
-    context_injection_agent,
     qa_critic_agent,
     final_publish_agent,
     human_approval_agent
@@ -19,7 +18,6 @@ def route_from_supervisor(state: TechDocState) -> str:
 workflow = StateGraph(TechDocState)
 
 workflow.add_node('supervisor', supervisor_agent)
-workflow.add_node('context_injection', context_injection_agent)
 workflow.add_node('new_doc_graph', new_doc_graph)
 workflow.add_node('update_doc_graph', update_doc_graph)
 workflow.add_node('data_ingest_graph', data_ingest_graph)
@@ -34,7 +32,6 @@ workflow.add_edge(START, 'supervisor')
 workflow.add_conditional_edges('supervisor', route_from_supervisor,
                                {
                                     'data_ingest_graph' : 'data_ingest_graph',
-                                    'context_injection' : 'context_injection',
                                     'new_doc_graph' : 'new_doc_graph',
                                     'update_doc_graph': 'update_doc_graph',
                                     'qa_critic' : 'qa_critic',
@@ -43,7 +40,6 @@ workflow.add_conditional_edges('supervisor', route_from_supervisor,
                                 })
 
 workflow.add_edge('data_ingest_graph', 'supervisor')
-workflow.add_edge('context_injection', 'supervisor')
 workflow.add_edge('new_doc_graph', 'supervisor')
 workflow.add_edge('update_doc_graph', 'supervisor')
 workflow.add_edge('qa_critic', 'supervisor')

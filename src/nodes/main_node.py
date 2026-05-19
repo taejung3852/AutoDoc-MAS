@@ -1,10 +1,8 @@
-import os
 from langchain_core.messages import SystemMessage, HumanMessage
 from src.utils import writer_llm, critic_llm
 from src.state import TechDocState
 
-# TODO: memory.py와 utils.py의 함수명도 기술 문서 도메인에 맞게 수성 해야함
-from src.memory import retrieve_past_context, save_doc_context
+from src.memory import save_doc_context
 from src.utils import load_technical_source
 
 
@@ -63,18 +61,6 @@ def supervisor_agent(state: TechDocState) -> dict:
     print(f"  -> 다음 단계: {next_step}")
     return {"next_step": next_step, "technical_source": processed_source}
 
-
-# ==============================================
-# 이전 맥락 주입 에이전트
-def context_injection_agent(state: TechDocState) -> dict:
-    print("[Node: Context Injection] VectorDB에서 시스템의 아키텍처 맥락을 가져옵니다.")
-    system_name = state.get('system_name') # 문서화할 이름
-
-    # TODO: memory.py 수정후 retrieve_past_context인자 변경 필요하다. 현재 프젝에 맞지 않는 이름 (current_topic -> current_system_name)
-    past_context = retrieve_past_context(system_name= system_name, k = 2)
-    print(f"  -> 검색된 맥락 데이터 로드 완료.\n")
-    
-    return {'previous_doc_context': past_context}
 
 
 # ==============================================

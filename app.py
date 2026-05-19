@@ -3,9 +3,9 @@ import tempfile
 import os
 import re
 import uuid
-from src.graph import app as doc_workflow
+from src.graphs.main_graph import app as doc_workflow
 from src.memory import get_all_systems, delete_system, save_user_guideline
-from src.utils import extract_tech_doc_style, synthesize_tech_feedback
+from src.utils import synthesize_tech_feedback
 
 st.set_page_config(page_title="AutoDoc-MAS", layout="wide")
 

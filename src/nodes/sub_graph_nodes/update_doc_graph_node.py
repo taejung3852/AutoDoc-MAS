@@ -1,6 +1,7 @@
-from src.state import TechDocState
 from langchain_core.messages import SystemMessage, HumanMessage
+from src.state import TechDocState
 from src.utils import writer_llm, critic_llm
+from src.memory import retrieve_past_context
 
 # ==============================================
 # Supervisor 에이전트
@@ -22,6 +23,19 @@ def update_doc_supervisor_agent(state: TechDocState) -> dict:
         return {'sub_next_step':'end'}
         
     return {"sub_next_step": next_step}
+
+# ==============================================
+# 이전 맥락 주입 에이전트
+def context_injection_agent(state: TechDocState) -> dict:
+    print("[Node: Context Injection] VectorDB에서 시스템의 아키텍처 맥락을 가져옵니다.")
+    system_name = state.get('system_name') # 문서화할 이름
+
+    # TODO: memory.py 수정후 retrieve_past_context인자 변경 필요하다. 현재 프젝에 맞지 않는 이름 (current_topic -> current_system_name)
+    past_context = retrieve_past_context(system_name= system_name, k = 2)
+    print(f"  -> 검색된 맥락 데이터 로드 완료.\n")
+    
+    return {'previous_doc_context': past_context}
+
 
 # ==============================================
 # 아웃라인 작성 에이전트

@@ -1,0 +1,14 @@
+{
+  "name": "AutoDoc-MAS",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "autodoc-mas",
+  "workspaceFolder": "/app",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.pylance"
+      ]
+    }
+  }
+}
