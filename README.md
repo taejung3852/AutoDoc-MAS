@@ -109,16 +109,13 @@ Critic 에이전트의 검증을 통과하지 못할 경우(`REVISE`), 피드백
 ## 데모
 
 ### 신규 문서 생성 (New Doc Pipeline)
-<!-- ![New Doc Demo](./assets/images/demo_new_doc.gif) -->
-> 🎬 GIF 촬영 예정 — 비정형 기술 데이터 입력 → 아웃라인 설계 → 초안 작성 → QA → 최종 발행
+![New Doc Demo](./assets/demos/demo_new_doc.gif)
 
 ### 업데이트 문서 생성 (Update Doc Pipeline)
-<!-- ![Update Doc Demo](./assets/images/demo_update_doc.gif) -->
-> 🎬 GIF 촬영 예정 — 기존 문서 맥락 주입 → 변경 사항 반영 → 정합성 검증 → 최종 발행
+![Update Doc Demo](./assets/demos/demo_update_doc.gif)
 
 ### PDF Figure Vision 분석
-<!-- ![Figure Analyzer Demo](./assets/images/demo_figure_analyzer.gif) -->
-> 🎬 GIF 촬영 예정 — PDF 업로드 → figure/chart 추출 → Vision LLM 분석 → technical_source 병합
+![Figure Analyzer Demo](./assets/demos/demo_pdf_file.gif)
 
 ---
 
