@@ -9,12 +9,12 @@ class TechDocState(TypedDict):
     doc_type: Literal['feature_spec', 'release_note', 'api_doc'] # 명확한 문서 타입 지정
     system_name: str                        # 문서화할 시스템 이름
     doc_style_guide: str                    # 사내 기술 문서 작성 가이드라인
-    technical_source: Optional[str]         # 개발자 메모, 소스코드, 회의록 등 입력 데이터
     is_update_request: bool                 # 기존 분서 업데이트 여부
     raw_file_path: Optional[str]            # PDF 등 원본 파일 경로
     file_type: Optional[str]                # "pdf" or "text"
 
-    # 상태 업데이투 과정에서 채워지는 필드들 (반드시 None으로 기본값 지정)
+    # MAS 진행 과정에서 채워지는 필드들
+    technical_source: Optional[str]         # 개발자 메모, 소스코드, 회의록 등 입력 데이터
     previous_doc_context: str               # 버전 업데이트 시 참고할 이전 문서의 맥락/용어집
     next_step: Optional[Literal[            # supervisor가 판단한 경로 선택 목록
         'data_ingest_graph',
