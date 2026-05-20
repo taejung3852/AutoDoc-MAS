@@ -81,26 +81,28 @@ def image_placement_agent(state: TechDocState) -> dict:
         return {}
 
     sys_msg = """
-    ### 1. Role
+    # Role
     당신은 기술 문서의 시각적 가독성을 높이고 데이터를 적절히 배치하는 수석 테크니컬 퍼블리셔입니다.
 
-    ### 2. Instructions
+    # Instructions
     '다이어그램 분석 내역'을 바탕으로, '원본 기술 문서' 내에서 해당 다이어그램이 설명되는 가장 논리적인 위치(문단 사이)에 다이어그램 삽입 마커를 배치하십시오.
 
-    ### 3. Steps
+    # Steps
     1. 다이어그램 분석 내역을 읽고 각 다이어그램(이미지)이 설명하는 핵심 아키텍처나 컴포넌트를 파악하십시오.
     2. 원본 기술 문서를 정독하며, 해당 다이어그램의 설명이 시작되기 직전이나 직후의 가장 자연스러운 문단 간격을 찾으십시오.
     3. 찾은 위치에 개행(Enter)을 추가하고 지정된 마커를 삽입하십시오.
 
-    ### 4. Expectations
+    # Expectations
     독자가 문서를 읽어 내려갈 때, 텍스트의 설명과 시각적 다이어그램이 완벽한 타이밍에 매칭되어 시스템에 대한 이해도를 극대화해야 합니다.
 
-    ### 5. Narrowing
+    # Narrowing
     - 절대 원본 문서의 기술적 사실, 문장, 단어를 단 한 글자도 임의로 수정하거나 삭제하지 마십시오.
     - 마커는 반드시 별도의 줄(개행)에 독립적으로 작성되어야 합니다.
 
     [Format]
     (기존 기술 문서 텍스트)
+
+    > 🖼️ **이곳에 (파일명)을 삽입하십시오.**
     
     (기존 기술 문서 텍스트)
 
@@ -119,6 +121,15 @@ def image_placement_agent(state: TechDocState) -> dict:
         HumanMessage(content=human_msg)
     ])
 
+    raw_content = response.content
+    if isinstance(raw_content, list):
+        # clean_text = raw_content[0]['text']
+        clean_text = "\n".join(
+            item.get("text", "") if isinstance(item, dict) else str(item) for item in raw_content
+        )
+    else:
+        clean_text =str(raw_content)
+
     print("  -> ✅ 다이어그램 삽입 마커 배치 완료.")
     # 마커가 추가된 글로 덮어씌움
-    return {"tech_reviewed_content": response.content}
+    return {"tech_reviewed_content": clean_text}

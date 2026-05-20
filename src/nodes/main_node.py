@@ -12,28 +12,26 @@ def supervisor_agent(state: TechDocState) -> dict:
     print("\n[Node: supervisor] 라우팅 판단 중...")
 
     is_update = state.get('is_update_request', False)
-    past_context = state.get("previous_doc_context")
     reviewed_content = state.get("tech_reviewed_content")  
     verdict = state.get("review_verdict")
     rev_count = state.get("revision_count", 0)
     max_rev = state.get("max_revisions", 2)
     technical_source = state.get('technical_source')
-    raw_file_path = state.get("raw_file_path")
     parser_verdict = state.get('parser_verdict')
     
     # 0. 전처리 필요 여부 판단 (최우선)
     #    - technical_source가 없고 raw_file_path가 있으면 → data_ingest_graph
     #    - parser_verdict가 FAIL이면 → 파이프라인 중단
     if parser_verdict == "FAIL":
-        print("  -> 파일 파싱 실패. 파이프라인을 중단합니다.")
+        print("  -> 데이터 전처리 및 품질 검증 실패. 파이프라인을 중단합니다.")
         return {'next_step':None}
     
-    if not technical_source and raw_file_path:
-        print("  -> 원본 파일 감지. 데이터 전처리 서브 그래프로 라우팅합니다.")
+    if not parser_verdict:
+        print("  -> 원본 파일 감지. 데이터 전처리 서브 그래프(data_ingest_graph)로 라우팅합니다.")
         return {'next_step': 'data_ingest_graph'}
          
     if not technical_source:
-        print("  -> 에러: technical_source가 없습니다. 파이프라인을 중단합니다.")
+        print("  -> 에러: technical_source가 비어 있습니다. 파이프라인을 중단합니다.")
         return {"next_step": None}
 
     # 2. QA에서 반려(REVISE)된 상태인 경우 먼저 체크!
