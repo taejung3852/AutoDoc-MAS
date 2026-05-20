@@ -145,12 +145,12 @@ with col_input1:
 
 with col_input2:
     uploaded_diagrams = st.file_uploader(
-        "다이어그램 / 아키텍처 이미지 (선택)",
+        "📄 본문 배치용 이미지 (선택)",
         type=['png', 'jpg'],
         accept_multiple_files=True,
+        help="주의: 이 이미지는 본문 작성 소스로 사용되지 않습니다. 에이전트가 문서를 완성한 후, 내용에 맞춰 가장 적절한 문단 사이에 시각 자료 삽입 마커를 자동으로 배치해 줍니다.",
         key=f"uploaded_diagrams_{st.session_state['input_key']}"
     )
-
 
 if st.button("🚀 AutoDoc-MAS 파이프라인 가동", use_container_width=True, type="primary"):
     parse_failed = False
