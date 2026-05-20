@@ -14,9 +14,9 @@ st.set_page_config(page_title="AutoDoc-MAS", layout="wide")
 # ==========================================
 # ⚙️ 모달(Pop-up) 창: 시스템 전역 설정
 # ==========================================
-@st.dialog("⚙️ 품질 보증(QA) 및 규격 설정")
+@st.dialog("⚙️ 사내 문서 표준 가이드라인 설정")
 def show_settings():
-    st.markdown("모든 시스템 문서화 파이프라인에 공통으로 적용될 규격을 설정합니다.")
+    st.markdown("모든 시스템 문서화 파이프라인에 공통으로 강제할 사내 기술 표준 규격을 설정합니다.")
 
     default_guide = """1. 시점 및 어조: 반드시 3인칭 객관적 시점을 유지하고, 감정적인 표현을 배제하십시오. 종결 어미는 '~합니다', '~입니다'로 통일하십시오.
 2. 구조 및 레이아웃: 문단은 최대 3문장을 넘지 않게 짧게 쓰고, 나열할 내용은 반드시 불릿 포인트(-)를 사용하십시오.
@@ -30,12 +30,12 @@ def show_settings():
     )
 
     max_revisions = st.slider(
-        "QA 시스템 최대 반려(재작성) 허용 횟수",
+        "사내 표준 미달 시 에어전트 자동 재작성(Reflection) 제한 횟수",
         min_value=1, max_value=3,
         value=st.session_state.get('max_revisions', 2)
     )
 
-    if st.button("설정 저장", use_container_width=True):
+    if st.button("표준 규격 저장 및 적용", use_container_width=True):
         st.session_state['doc_style_guide'] = doc_style_guide_input
         st.session_state['max_revisions'] = max_revisions
         st.rerun()
@@ -105,7 +105,7 @@ with col_header1:
         else "✨ 새로운 기술 문서 파이프라인 생성"
     )
 with col_header2:
-    if st.button("⚙️ QA 규격 설정"):
+    if st.button("⚙️ 사내 문서 표준 가이드라인 설정"):
         show_settings()
 
 st.markdown("---")

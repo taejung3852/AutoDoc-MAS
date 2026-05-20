@@ -10,30 +10,31 @@ def data_ingest_supervisor_agent(state: TechDocState):
     현재 data_ingest_next_step 상태 값을 보고 다음 노드를 결정한다.
     """
     file_type = state.get('file_type')
-    technical_source = state.get('technical_source')
+    current_step = state.get('data_ingest_next_step')
     parser_verdict = state.get('parser_verdict')         
     pdf_extracted_figures = state.get('pdf_extracted_figures')
 
-    # 만약에 초기라면
-    if not technical_source:
+    #  최종 품질 검증 결과(PASS/FAIL)가 확보되었다면 서브 그래프 완전 종료    
+    if parser_verdict in ["PASS", "FAIL"]:
+        return {'data_ingest_next_step': 'end'}
+    
+    #  메인 Supervisor로부터 최초로 서브 그래프에 진입한 순간 분기 (current_step이 None)
+    if not current_step:
         if file_type == 'pdf':
             return {'data_ingest_next_step': 'pdf_parser'}
         else:
             return {'data_ingest_next_step': 'text_cleaner'}
-    
-    if pdf_extracted_figures:
-        return {'data_ingest_next_step': 'figure_analyzer'}
 
-    if not parser_verdict:
+    if current_step in ['pdf_parser', 'figure_analyzer']:
+        if pdf_extracted_figures: # PDF에서 figure/chart가 추출된 경우 → figure_analyzer로, 그렇지 않으면 바로 검증 게이트로
+            return {'data_ingest_next_step': 'figure_analyzer'}
+        else:
+            return {'data_ingest_next_step': 'parser_validator'}
+
+    # 텍스트 클리닝 작업이 완료된 후 검증 게이트로 유도
+    if current_step == 'text_cleaner':
         return {'data_ingest_next_step': 'parser_validator'}
 
-    # === 판단을 main 그래프의 supervisor에서 여기서 parser_verdict의 여부를 나눠서 반환이 의미 없지만 가독성? 때문에 뒀다. ===
-    if parser_verdict == "PASS":
-        return {'data_ingest_next_step': 'end'}
-    
-    if parser_verdict == 'FAIL':
-        return {'data_ingest_next_step': 'end'}
-    
     return {'data_ingest_next_step': 'end'}
 
 def pdf_parser_agent(state: TechDocState):
